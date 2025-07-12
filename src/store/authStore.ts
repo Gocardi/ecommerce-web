@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User } from '@/types';
+import { User, LoginRequest, RegisterRequest } from '@/types';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -9,10 +9,19 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (dni: string, password: string) => Promise<boolean>;
-  register: (data: any) => Promise<boolean>;
+  
+  // Actions
+  login: (data: LoginRequest) => Promise<boolean>;
+  register: (data: RegisterRequest) => Promise<boolean>;
   logout: () => void;
   getProfile: () => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<boolean>;
+  
+  // Helpers
+  isAdmin: () => boolean;
+  isAffiliate: () => boolean;
+  getDisplayName: () => string;
+  getRoleLabel: () => string;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -23,10 +32,10 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
 
-      login: async (dni: string, password: string) => {
+      login: async (data: LoginRequest) => {
         set({ isLoading: true });
         try {
-          const response = await api.post('/auth/login', { dni, password });
+          const response = await api.post('/auth/login', data);
           
           if (response.data.success) {
             const { user, token } = response.data.data;
@@ -52,10 +61,13 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      register: async (data) => {
+      register: async (data: RegisterRequest) => {
         set({ isLoading: true });
         try {
-          const response = await api.post('/auth/register', data);
+          const response = await api.post('/auth/register', {
+            ...data,
+            role: 'afiliado', // Por defecto los registros son afiliados
+          });
           
           if (response.data.success) {
             const { user, token } = response.data.data;
@@ -87,6 +99,10 @@ export const useAuthStore = create<AuthState>()(
           token: null, 
           isAuthenticated: false 
         });
+        
+        // Opcional: notificar al backend
+        api.post('/auth/logout').catch(() => {});
+        
         toast.success('Sesión cerrada correctamente');
       },
 
@@ -101,6 +117,54 @@ export const useAuthStore = create<AuthState>()(
           // Si hay error, probablemente el token expiró
           get().logout();
         }
+      },
+
+      updateProfile: async (data: Partial<User>) => {
+        try {
+          const response = await api.patch('/auth/profile', data);
+          if (response.data.success) {
+            set({ user: response.data.data });
+            toast.success('Perfil actualizado correctamente');
+            return true;
+          }
+          return false;
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al actualizar perfil';
+          toast.error(message);
+          return false;
+        }
+      },
+
+      // Helper functions
+      isAdmin: () => {
+        const user = get().user;
+        return user?.role === 'admin' || user?.role === 'admin_general';
+      },
+
+      isAffiliate: () => {
+        const user = get().user;
+        return user?.role === 'afiliado';
+      },
+
+      getDisplayName: () => {
+        const user = get().user;
+        if (!user) return 'Invitado';
+        return user.fullName || user.email;
+      },
+
+      getRoleLabel: () => {
+        const user = get().user;
+        if (!user) return 'Visitante';
+        
+        const roleLabels = {
+          visitante: 'Visitante',
+          afiliado: 'Afiliado',
+          admin: 'Administrador',
+          admin_general: 'Admin General',
+          repartidor: 'Repartidor',
+        };
+        
+        return roleLabels[user.role] || 'Usuario';
       },
     }),
     {

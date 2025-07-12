@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useProductsStore } from '@/store/productsStore';
 import { useAuthStore } from '@/store/authStore';
 import Header from '@/components/layout/Header';
@@ -12,97 +12,73 @@ import {
   Grid3X3, 
   List, 
   Filter, 
-  Search,
-  ChevronDown,
-  X,
+  ArrowLeft,
   Package,
-  Star,
-  ShoppingCart
+  X,
+  Tag,
+  TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
 
-const ProductsPage: React.FC = () => {
-  const searchParams = useSearchParams();
-  const { user, isAuthenticated } = useAuthStore();
+const CategoryProductsPage: React.FC = () => {
+  const params = useParams();
+  const router = useRouter();
+  const categorySlug = params.slug as string;
   
-  const {
-    products,
-    categories,
-    pagination,
-    filters,
-    isLoading,
-    fetchProducts,
-    fetchCategories,
-    setFilters,
-    updateFilter,
-    clearFilters,
+  const { 
+    products, 
+    pagination, 
+    filters, 
+    isLoading, 
+    fetchCategoryBySlug, 
+    fetchProductsByCategory,
+    updateFilter 
   } = useProductsStore();
-
+  
+  const { user } = useAuthStore();
+  
+  const [category, setCategory] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [localFilters, setLocalFilters] = useState({
     search: '',
-    categoryId: '',
     minPrice: '',
     maxPrice: '',
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
 
-  // Initialize from URL params
   useEffect(() => {
-    const search = searchParams.get('search') || '';
-    const categoryId = searchParams.get('categoryId') || '';
-    
-    if (search || categoryId) {
-      setLocalFilters(prev => ({
-        ...prev,
-        search,
-        categoryId,
-      }));
-      
-      setFilters({
-        ...filters,
-        search: search || undefined,
-        categoryId: categoryId ? parseInt(categoryId) : undefined,
-      });
-    } else {
-      fetchProducts();
-    }
-    
-    fetchCategories();
-  }, [searchParams]);
+    const loadCategoryData = async () => {
+      const categoryData = await fetchCategoryBySlug(categorySlug);
+      if (categoryData) {
+        setCategory(categoryData);
+        fetchProductsByCategory(categoryData.id);
+      } else {
+        router.push('/categories');
+      }
+    };
+
+    loadCategoryData();
+  }, [categorySlug, fetchCategoryBySlug, fetchProductsByCategory, router]);
 
   const handleFilterChange = (key: string, value: string) => {
     setLocalFilters(prev => ({ ...prev, [key]: value }));
   };
 
   const applyFilters = () => {
-    const newFilters = {
-      ...filters,
-      search: localFilters.search || undefined,
-      categoryId: localFilters.categoryId ? parseInt(localFilters.categoryId) : undefined,
-      minPrice: localFilters.minPrice ? parseFloat(localFilters.minPrice) : undefined,
-      maxPrice: localFilters.maxPrice ? parseFloat(localFilters.maxPrice) : undefined,
-      sortBy: localFilters.sortBy as any,
-      sortOrder: localFilters.sortOrder as any,
-      page: 1,
-    };
-    
-    setFilters(newFilters);
+    // Apply filters logic here
     setShowFilters(false);
   };
 
   const handleClearFilters = () => {
     setLocalFilters({
       search: '',
-      categoryId: '',
       minPrice: '',
       maxPrice: '',
       sortBy: 'createdAt',
       sortOrder: 'desc',
     });
-    clearFilters();
   };
 
   const handlePageChange = (page: number) => {
@@ -122,51 +98,81 @@ const ProductsPage: React.FC = () => {
     return Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
   };
 
+  if (isLoading && !category) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Header />
       
       <div className="min-h-screen bg-gray-50">
-        {/* Page Header */}
+        {/* Category Header */}
         <div className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Breadcrumb */}
+            <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-6">
+              <Link href="/" className="hover:text-blue-600">Inicio</Link>
+              <span>/</span>
+              <Link href="/categories" className="hover:text-blue-600">Categorías</Link>
+              <span>/</span>
+              <span className="text-gray-900">{category?.name}</span>
+            </nav>
+
+            {/* Back Button */}
+            <Button
+              variant="outline"
+              onClick={() => router.back()}
+              className="mb-6"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver
+            </Button>
+
+            {/* Category Info */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Productos</h1>
-                <p className="mt-2 text-gray-600">
-                  {isAuthenticated && user?.role === 'afiliado' 
-                    ? 'Precios especiales para afiliados' 
-                    : 'Descubre nuestra amplia gama de productos'}
-                </p>
-              </div>
-              
-              <div className="mt-4 md:mt-0 flex items-center space-x-4">
-                {/* View Toggle */}
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-white shadow-sm' : ''}`}
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
+              <div className="flex-1">
+                <div className="flex items-center mb-4">
+                  <Tag className="w-6 h-6 text-blue-600 mr-2" />
+                  <h1 className="text-3xl font-bold text-gray-900">{category?.name}</h1>
                 </div>
                 
-                {/* Filter Toggle */}
-                <Button
-                  variant="outline"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="md:hidden"
-                >
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filtros
-                </Button>
+                <p className="text-gray-600 mb-4 max-w-3xl">
+                  {category?.description || `Explora nuestra selección de productos en ${category?.name?.toLowerCase()}.`}
+                </p>
+                
+                <div className="flex items-center space-x-6 text-sm text-gray-500">
+                  <div className="flex items-center">
+                    <Package className="w-4 h-4 mr-1" />
+                    <span>{category?.productsCount || 0} productos</span>
+                  </div>
+                  
+                  {user?.role === 'afiliado' && category?.avgAffiliatePrice && (
+                    <div className="flex items-center">
+                      <TrendingUp className="w-4 h-4 mr-1" />
+                      <span>Precio promedio afiliado: {formatPrice(category.avgAffiliatePrice)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
+              
+              {/* Category Image */}
+              {category?.imageUrl && (
+                <div className="mt-6 md:mt-0 md:ml-8">
+                  <img
+                    src={category.imageUrl}
+                    alt={category.name}
+                    className="w-32 h-32 object-cover rounded-lg shadow-md"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -190,7 +196,7 @@ const ProductsPage: React.FC = () => {
                   {/* Search */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Buscar
+                      Buscar en {category?.name}
                     </label>
                     <Input
                       type="text"
@@ -198,25 +204,6 @@ const ProductsPage: React.FC = () => {
                       value={localFilters.search}
                       onChange={(e) => handleFilterChange('search', e.target.value)}
                     />
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Categoría
-                    </label>
-                    <select
-                      value={localFilters.categoryId}
-                      onChange={(e) => handleFilterChange('categoryId', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Todas las categorías</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name} ({category.productsCount})
-                        </option>
-                      ))}
-                    </select>
                   </div>
 
                   {/* Price Range */}
@@ -278,7 +265,7 @@ const ProductsPage: React.FC = () => {
 
             {/* Products Grid */}
             <div className="lg:col-span-3">
-              {/* Results Header */}
+              {/* Controls */}
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <p className="text-sm text-gray-600">
@@ -290,6 +277,34 @@ const ProductsPage: React.FC = () => {
                       'No se encontraron productos'
                     )}
                   </p>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  {/* View Toggle */}
+                  <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setViewMode('grid')}
+                      className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-white shadow-sm' : ''}`}
+                    >
+                      <Grid3X3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  {/* Filter Toggle - Mobile */}
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="lg:hidden"
+                  >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filtros
+                  </Button>
                 </div>
               </div>
 
@@ -388,9 +403,6 @@ const ProductsPage: React.FC = () => {
                                 <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                                   {product.description}
                                 </p>
-                                <p className="text-sm text-gray-500 mt-1">
-                                  {product.category.name}
-                                </p>
                               </div>
                               <div className="flex items-center justify-between mt-4">
                                 <div>
@@ -424,14 +436,18 @@ const ProductsPage: React.FC = () => {
               {!isLoading && products.length === 0 && (
                 <div className="text-center py-12">
                   <Package className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No hay productos</h3>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    No hay productos en esta categoría
+                  </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    No se encontraron productos con los filtros seleccionados.
+                    Aún no hay productos disponibles en {category?.name}.
                   </p>
                   <div className="mt-6">
-                    <Button onClick={handleClearFilters} variant="outline">
-                      Limpiar filtros
-                    </Button>
+                    <Link href="/categories">
+                      <Button variant="outline">
+                        Ver otras categorías
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               )}
@@ -483,4 +499,4 @@ const ProductsPage: React.FC = () => {
   );
 };
 
-export default ProductsPage;
+export default CategoryProductsPage;
