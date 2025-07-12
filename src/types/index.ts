@@ -7,24 +7,48 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   lastLogin?: string;
-}
-
-export interface Affiliate extends User {
-  phone: string;
+  phone?: string;
   region?: string;
   city?: string;
   address?: string;
   reference?: string;
-  status: 'active' | 'pending' | 'suspended';
-  points: number;
-  sponsor?: User;
+}
+
+export interface LoginRequest {
+  dni: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  dni: string;
+  fullName: string;
+  email: string;
+  password: string;
+  role?: 'afiliado';
+  phone?: string;
+  region?: string;
+  city?: string;
+  address?: string;
+  reference?: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  data: {
+    user: User;
+    token: string;
+  };
+  message: string;
 }
 
 export interface Category {
   id: number;
   name: string;
+  slug: string;
   description?: string;
+  imageUrl?: string;
   isActive: boolean;
+  productsCount?: number;
   createdAt: string;
 }
 
@@ -34,14 +58,58 @@ export interface Product {
   category: Category;
   name: string;
   description?: string;
-  price: number;
-  affiliatePrice: number;
+  price: number; // Precio según el rol del usuario
+  originalPrice: number; // Precio público
+  affiliatePrice: number; // Precio para afiliados
   stock: number;
-  minStock: number;
+  discountPercentage?: number;
+  sku?: string;
   isActive: boolean;
+  isAvailable: boolean;
   imageUrl?: string;
   weight?: number;
   createdAt: string;
+  finalPrice?: number; // Precio con descuento aplicado
+}
+
+export interface ProductFilters {
+  search?: string;
+  categoryId?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  page?: number;
+  limit?: number;
+  sortBy?: 'name' | 'price' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface ProductsResponse {
+  success: boolean;
+  data: {
+    products: Product[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+    filters: {
+      search?: string;
+      categoryId?: number;
+      minPrice?: number;
+      maxPrice?: number;
+      priceField: string;
+    };
+  };
+  message: string;
+}
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data: T;
+  message: string;
 }
 
 export interface CartItem {
@@ -49,64 +117,13 @@ export interface CartItem {
   productId: number;
   product: Product;
   quantity: number;
+  price: number;
 }
 
 export interface Cart {
   id: number;
-  userId?: number;
-  sessionId?: string;
-  items: CartItem[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Order {
-  id: number;
   userId: number;
-  user: User;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
-  totalAmount: number;
-  shippingCost: number;
-  trackingCode?: string;
-  scheduledDate?: string;
-  deliveredAt?: string;
-  shalomAgency?: string;
-  shalomGuide?: string;
-  createdAt: string;
-  orderItems: OrderItem[];
-  payments: Payment[];
-}
-
-export interface OrderItem {
-  id: number;
-  orderId: number;
-  productId: number;
-  product: Product;
-  quantity: number;
-  unitPrice: number;
-}
-
-export interface Payment {
-  id: number;
-  orderId: number;
-  paidAt: string;
-  method: 'BCP_code' | 'cash' | 'credit_card';
-  amount: number;
-  status: 'valid' | 'failed' | 'pending';
-  bcpCode?: string;
-  reference?: string;
-}
-
-export interface Commission {
-  id: number;
-  affiliateId: number;
-  affiliate: User;
-  orderItemId: number;
-  orderItem: OrderItem;
-  type: 'direct' | 'referral';
-  amount: number;
-  percentage: number;
-  status: 'pending' | 'approved' | 'paid';
-  createdAt: string;
-  approvedAt?: string;
+  items: CartItem[];
+  total: number;
+  itemCount: number;
 }
