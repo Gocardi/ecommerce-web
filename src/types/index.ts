@@ -3,29 +3,80 @@ export interface User {
   dni: string;
   fullName: string;
   email: string;
-  role: 'visitante' | 'afiliado' | 'admin' | 'admin_general' | 'repartidor';
+  role: 'visitante' | 'afiliado' | 'admin' | 'admin_general';
   isActive: boolean;
+  maxReferrals?: number;
+  createdBy?: number;
   createdAt: string;
   lastLogin?: string;
-}
-
-export interface Affiliate extends User {
-  phone: string;
+  phone?: string;
   region?: string;
   city?: string;
   address?: string;
   reference?: string;
-  status: 'active' | 'pending' | 'suspended';
-  points: number;
-  sponsor?: User;
+}
+
+export interface LoginRequest {
+  dni: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  dni: string;
+  fullName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  region?: string;
+  city?: string;
+  address?: string;
+  reference?: string;
+}
+
+export interface RegisterAffiliateRequest {
+  dni: string;
+  fullName: string;
+  email: string;
+  password: string;
+  phone: string;
+  region: string;
+  city: string;
+  address: string;
+  reference?: string;
+  maxReferrals?: number;
+}
+
+export interface RegisterAdminRequest {
+  dni: string;
+  fullName: string;
+  email: string;
+  password: string;
+  phone: string;
+  region: string;
+  city: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  data: {
+    user: User;
+    token: string;
+  };
+  message: string;
 }
 
 export interface Category {
   id: number;
   name: string;
+  slug: string;
   description?: string;
+  imageUrl?: string;
   isActive: boolean;
+  productsCount?: number;
+  avgPublicPrice?: number;
+  avgAffiliatePrice?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Product {
@@ -34,14 +85,61 @@ export interface Product {
   category: Category;
   name: string;
   description?: string;
-  price: number;
-  affiliatePrice: number;
+  price: number; // Precio según el rol del usuario
+  originalPrice: number; // Precio público
+  affiliatePrice: number; // Precio para afiliados
   stock: number;
-  minStock: number;
+  discountPercentage?: number;
+  sku?: string;
   isActive: boolean;
+  isAvailable: boolean;
   imageUrl?: string;
   weight?: number;
   createdAt: string;
+  updatedAt?: string;
+  finalPrice?: number; // Precio con descuento aplicado
+}
+
+export interface ProductFilters {
+  search?: string;
+  categoryId?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  page?: number;
+  limit?: number;
+  sortBy?: 'name' | 'price' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface Pagination {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface ProductsResponse {
+  success: boolean;
+  data: {
+    products: Product[];
+    pagination: Pagination;
+    filters: {
+      search?: string;
+      categoryId?: number;
+      minPrice?: number;
+      maxPrice?: number;
+      priceField: string;
+    };
+  };
+  message: string;
+}
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data: T;
+  message: string;
 }
 
 export interface CartItem {
@@ -49,64 +147,66 @@ export interface CartItem {
   productId: number;
   product: Product;
   quantity: number;
+  price: number;
+  subtotal: number;
 }
 
 export interface Cart {
   id: number;
-  userId?: number;
-  sessionId?: string;
+  userId: number;
   items: CartItem[];
-  createdAt: string;
+  total: number;
+  itemCount: number;
   updatedAt: string;
 }
 
-export interface Order {
-  id: number;
-  userId: number;
-  user: User;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
-  totalAmount: number;
-  shippingCost: number;
-  trackingCode?: string;
-  scheduledDate?: string;
-  deliveredAt?: string;
-  shalomAgency?: string;
-  shalomGuide?: string;
-  createdAt: string;
-  orderItems: OrderItem[];
-  payments: Payment[];
+// Tipos para componentes
+export interface ButtonProps {
+  children: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  fullWidth?: boolean;
+  loading?: boolean;
+  disabled?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  onClick?: () => void;
+  className?: string;
 }
 
-export interface OrderItem {
-  id: number;
-  orderId: number;
-  productId: number;
-  product: Product;
-  quantity: number;
-  unitPrice: number;
+export interface InputProps {
+  label?: string;
+  placeholder?: string;
+  type?: 'text' | 'email' | 'password' | 'number' | 'tel';
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+  required?: boolean;
+  disabled?: boolean;
+  className?: string;
 }
 
-export interface Payment {
-  id: number;
-  orderId: number;
-  paidAt: string;
-  method: 'BCP_code' | 'cash' | 'credit_card';
-  amount: number;
-  status: 'valid' | 'failed' | 'pending';
-  bcpCode?: string;
-  reference?: string;
+export interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export interface Commission {
-  id: number;
-  affiliateId: number;
-  affiliate: User;
-  orderItemId: number;
-  orderItem: OrderItem;
-  type: 'direct' | 'referral';
-  amount: number;
-  percentage: number;
-  status: 'pending' | 'approved' | 'paid';
-  createdAt: string;
-  approvedAt?: string;
+// Enums útiles
+export enum UserRole {
+  VISITANTE = 'visitante',
+  AFILIADO = 'afiliado',
+  ADMIN = 'admin',
+  ADMIN_GENERAL = 'admin_general',
+  REPARTIDOR = 'repartidor',
+}
+
+export enum SortOptions {
+  NAME_ASC = 'name-asc',
+  NAME_DESC = 'name-desc',
+  PRICE_ASC = 'price-asc',
+  PRICE_DESC = 'price-desc',
+  NEWEST = 'createdAt-desc',
+  OLDEST = 'createdAt-asc',
 }
