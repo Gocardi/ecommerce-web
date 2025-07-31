@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-export const api = axios.create({
+const api = axios.create({
   baseURL: API_URL,
   timeout: 10000,
   headers: {
@@ -13,10 +13,10 @@ export const api = axios.create({
 // Interceptor para agregar token de autenticación
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('auth-storage');
-    if (token) {
+    const authStorage = localStorage.getItem('auth-storage');
+    if (authStorage) {
       try {
-        const parsed = JSON.parse(token);
+        const parsed = JSON.parse(authStorage);
         if (parsed.state?.token) {
           config.headers.Authorization = `Bearer ${parsed.state.token}`;
         }

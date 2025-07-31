@@ -1,30 +1,35 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, LoginRequest, RegisterRequest } from '@/types';
+import { toast } from 'react-hot-toast';
 import api from '@/services/api';
-import toast from 'react-hot-toast';
+import { User, LoginRequest, RegisterRequest, RegisterAffiliateRequest, RegisterAdminRequest } from '@/types';
 
-interface AuthState {
+interface AuthStore {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   
   // Actions
-  login: (data: LoginRequest) => Promise<boolean>;
-  register: (data: RegisterRequest) => Promise<boolean>;
+  login: (credentials: LoginRequest) => Promise<boolean>;
+  registerUser: (data: RegisterRequest) => Promise<boolean>;
+  registerAffiliate: (data: RegisterAffiliateRequest) => Promise<boolean>;
+  registerAdmin: (data: RegisterAdminRequest) => Promise<boolean>;
   logout: () => void;
   getProfile: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<boolean>;
+  updateMaxReferrals: (affiliateId: number, maxReferrals: number) => Promise<boolean>;
   
-  // Helpers
+  // Helper functions
   isAdmin: () => boolean;
   isAffiliate: () => boolean;
+  canRegisterAffiliates: () => boolean;
+  canRegisterAdmins: () => boolean;
   getDisplayName: () => string;
   getRoleLabel: () => string;
 }
 
-export const useAuthStore = create<AuthState>()(
+export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
       user: null,
@@ -32,10 +37,11 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
 
-      login: async (data: LoginRequest) => {
+      login: async (credentials: LoginRequest) => {
         set({ isLoading: true });
         try {
-          const response = await api.post('/auth/login', data);
+          console.log('🔐 Intentando login con:', credentials.dni);
+          const response = await api.post('/auth/login', credentials);
           
           if (response.data.success) {
             const { user, token } = response.data.data;
@@ -54,6 +60,7 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false });
           return false;
         } catch (error: any) {
+          console.error('❌ Error en login:', error.response?.data || error.message);
           const message = error.response?.data?.message || 'Error al iniciar sesión';
           toast.error(message);
           set({ isLoading: false });
@@ -61,24 +68,15 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      register: async (data: RegisterRequest) => {
+      registerUser: async (data: RegisterRequest) => {
         set({ isLoading: true });
         try {
-          const response = await api.post('/auth/register', {
-            ...data,
-            role: 'afiliado', // Por defecto los registros son afiliados
-          });
+          console.log('📝 Intentando registrar usuario:', data.dni);
+          const response = await api.post('/auth/register/user', data);
           
           if (response.data.success) {
-            const { user, token } = response.data.data;
-            set({ 
-              user, 
-              token, 
-              isAuthenticated: true, 
-              isLoading: false 
-            });
-            
-            toast.success('¡Registro exitoso! Bienvenido a Boost');
+            toast.success('¡Cuenta creada exitosamente! Ahora puedes iniciar sesión');
+            set({ isLoading: false });
             return true;
           }
           
@@ -86,9 +84,74 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false });
           return false;
         } catch (error: any) {
+          console.error('❌ Error en registro:', error.response?.data || error.message);
           const message = error.response?.data?.message || 'Error en el registro';
           toast.error(message);
           set({ isLoading: false });
+          return false;
+        }
+      },
+
+      registerAffiliate: async (data: RegisterAffiliateRequest) => {
+        set({ isLoading: true });
+        try {
+          const response = await api.post('/auth/register/affiliate', data);
+          
+          if (response.data.success) {
+            toast.success('¡Afiliado registrado exitosamente!');
+            set({ isLoading: false });
+            return true;
+          }
+          
+          toast.error(response.data.message || 'Error al registrar afiliado');
+          set({ isLoading: false });
+          return false;
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al registrar afiliado';
+          toast.error(message);
+          set({ isLoading: false });
+          return false;
+        }
+      },
+
+      registerAdmin: async (data: RegisterAdminRequest) => {
+        set({ isLoading: true });
+        try {
+          const response = await api.post('/auth/register/admin', data);
+          
+          if (response.data.success) {
+            toast.success('¡Administrador registrado exitosamente!');
+            set({ isLoading: false });
+            return true;
+          }
+          
+          toast.error(response.data.message || 'Error al registrar administrador');
+          set({ isLoading: false });
+          return false;
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al registrar administrador';
+          toast.error(message);
+          set({ isLoading: false });
+          return false;
+        }
+      },
+
+      updateMaxReferrals: async (affiliateId: number, maxReferrals: number) => {
+        try {
+          const response = await api.put(`/auth/affiliates/${affiliateId}/max-referrals`, {
+            maxReferrals
+          });
+          
+          if (response.data.success) {
+            toast.success('Límite de referidos actualizado');
+            return true;
+          }
+          
+          toast.error(response.data.message || 'Error al actualizar límite');
+          return false;
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al actualizar límite';
+          toast.error(message);
           return false;
         }
       },
@@ -144,6 +207,16 @@ export const useAuthStore = create<AuthState>()(
       isAffiliate: () => {
         const user = get().user;
         return user?.role === 'afiliado';
+      },
+
+      canRegisterAffiliates: () => {
+        const user = get().user;
+        return user?.role === 'afiliado' || user?.role === 'admin' || user?.role === 'admin_general';
+      },
+
+      canRegisterAdmins: () => {
+        const user = get().user;
+        return user?.role === 'admin_general';
       },
 
       getDisplayName: () => {

@@ -8,11 +8,11 @@ import Header from '@/components/layout/Header';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { UserPlus, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, Info } from 'lucide-react';
 
 const RegisterPage: React.FC = () => {
   const router = useRouter();
-  const { register, isLoading, isAuthenticated } = useAuthStore();
+  const { registerUser, isLoading, isAuthenticated } = useAuthStore();
   
   const [formData, setFormData] = useState({
     dni: '',
@@ -91,10 +91,10 @@ const RegisterPage: React.FC = () => {
     if (!validateForm()) return;
 
     const { confirmPassword, ...registerData } = formData;
-    const success = await register(registerData);
+    const success = await registerUser(registerData);
     
     if (success) {
-      router.push('/');
+      router.push('/login');
     }
   };
 
@@ -117,7 +117,7 @@ const RegisterPage: React.FC = () => {
           <div className="text-center">
             <UserPlus className="mx-auto h-12 w-12 text-blue-600" />
             <h2 className="mt-6 text-3xl font-bold text-gray-900">
-              Crear Cuenta
+              Crear Cuenta de Usuario
             </h2>
             <p className="mt-2 text-sm text-gray-600">
               ¿Ya tienes cuenta?{' '}
@@ -295,16 +295,27 @@ const RegisterPage: React.FC = () => {
 
             <div className="mt-6">
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">Beneficios de ser afiliado:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Precios especiales en todos los productos</li>
-                    <li>Descuentos exclusivos y promociones</li>
-                    <li>Acceso prioritario a nuevos productos</li>
-                    <li>Soporte personalizado</li>
-                  </ul>
+                <div className="flex">
+                  <Info className="h-5 w-5 text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">Sobre las cuentas de usuario:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Puedes comprar sin registrarte como invitado</li>
+                      <li>La cuenta te permite guardar direcciones y ver historial</li>
+                      <li>Para ser afiliado necesitas ser registrado por un afiliado existente</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 text-center">
+              <Link 
+                href="/login/affiliate" 
+                className="text-sm text-blue-600 hover:text-blue-500"
+              >
+                ¿Eres afiliado? Inicia sesión aquí
+              </Link>
             </div>
           </Card>
         </div>

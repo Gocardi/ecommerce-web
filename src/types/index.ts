@@ -3,8 +3,10 @@ export interface User {
   dni: string;
   fullName: string;
   email: string;
-  role: 'visitante' | 'afiliado' | 'admin' | 'admin_general' | 'repartidor';
+  role: 'visitante' | 'afiliado' | 'admin' | 'admin_general';
   isActive: boolean;
+  maxReferrals?: number;
+  createdBy?: number;
   createdAt: string;
   lastLogin?: string;
   phone?: string;
@@ -24,12 +26,34 @@ export interface RegisterRequest {
   fullName: string;
   email: string;
   password: string;
-  role?: 'afiliado';
   phone?: string;
   region?: string;
   city?: string;
   address?: string;
   reference?: string;
+}
+
+export interface RegisterAffiliateRequest {
+  dni: string;
+  fullName: string;
+  email: string;
+  password: string;
+  phone: string;
+  region: string;
+  city: string;
+  address: string;
+  reference?: string;
+  maxReferrals?: number;
+}
+
+export interface RegisterAdminRequest {
+  dni: string;
+  fullName: string;
+  email: string;
+  password: string;
+  phone: string;
+  region: string;
+  city: string;
 }
 
 export interface AuthResponse {
