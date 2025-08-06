@@ -175,21 +175,21 @@ const CategoriesPage: React.FC = () => {
           {/* Call to Action */}
           {!user && (
             <div className="mt-16">
-              <Card className="text-center bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+              <Card className="text-center bg-gradient-to-r from-green-500 to-emerald-600 text-white">
                 <h2 className="text-2xl font-bold mb-4">
-                  ¿Quieres precios especiales?
+                  ¿Quieres acceder a precios especiales?
                 </h2>
-                <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-                  Regístrate como afiliado y obtén descuentos exclusivos en todas nuestras categorías de productos.
+                <p className="text-green-100 mb-6 max-w-2xl mx-auto">
+                  Crea tu cuenta y descubre nuestros productos naturales de calidad premium.
                 </p>
                 <div className="space-x-4">
                   <Link href="/register">
-                    <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-                      Registrarse Gratis
+                    <button className="bg-white text-green-600 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                      Crear Cuenta
                     </button>
                   </Link>
                   <Link href="/login">
-                    <button className="border border-white text-white px-6 py-3 rounded-lg font-medium hover:bg-white hover:text-blue-600 transition-colors">
+                    <button className="border border-white text-white px-6 py-3 rounded-lg font-medium hover:bg-white hover:text-green-600 transition-colors">
                       Iniciar Sesión
                     </button>
                   </Link>

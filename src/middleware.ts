@@ -1,50 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const token = request.cookies.get('auth-token')?.value
+  const { pathname } = request.nextUrl
 
-  // Rutas que requieren autenticación
-  const protectedRoutes = [
-    '/profile',
-    '/admin',
-    '/orders',
-    '/cart/checkout'
-  ];
+  // Rutas que SIEMPRE son públicas
+  const alwaysPublicPaths = ['/login', '/register', '/']
+  const isAlwaysPublic = alwaysPublicPaths.includes(pathname)
+  
+  // Rutas que no necesitan middleware
+  const skipPaths = pathname.startsWith('/api') || 
+                    pathname.startsWith('/_next') || 
+                    pathname.startsWith('/favicon.ico') ||
+                    pathname.includes('.') // archivos estáticos
 
-  // Rutas solo para usuarios no autenticados
-  const authRoutes = [
-    '/login',
-    '/register'
-  ];
-
-  const isProtectedRoute = protectedRoutes.some(route => 
-    pathname.startsWith(route)
-  );
-
-  const isAuthRoute = authRoutes.some(route => 
-    pathname.startsWith(route)
-  );
-
-  // Obtener token de las cookies o localStorage (simulado)
-  const authHeader = request.headers.get('authorization');
-  const token = authHeader?.replace('Bearer ', '') || 
-                request.cookies.get('auth-token')?.value;
-
-  // Si es una ruta protegida y no hay token, redirigir al login
-  if (isProtectedRoute && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  if (skipPaths) {
+    return NextResponse.next()
   }
 
-  // Si es una ruta de auth y hay token, redirigir al home
-  if (isAuthRoute && token) {
-    return NextResponse.redirect(new URL('/', request.url));
+  // Si tiene token y está en login, redirigir al home
+  if (token && pathname === '/login') {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
-  return NextResponse.next();
+  // Si no tiene token y NO es ruta pública, redirigir a login
+  if (!token && !isAlwaysPublic) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(url)
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
-};
+}

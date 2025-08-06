@@ -1,47 +1,41 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { Toaster } from 'react-hot-toast';
-import './globals.css';
+"use client";
 
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-  title: 'Boost Ecommerce',
-  description: 'Tienda online de suplementos y productos de bienestar',
-  keywords: 'suplementos, vitaminas, proteínas, bienestar, salud',
-};
+import React, { useEffect } from "react";
+import { Toaster } from "react-hot-toast";
+import { useAuthStore } from "@/store/authStore";
+import "./globals.css";
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { initializeAuth } = useAuthStore();
+
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
   return (
     <html lang="es">
-      <body className={inter.className}>
-        <div id="root" className="min-h-screen bg-gray-50">
-          {children}
-        </div>
+      <body>
+        {children}
         <Toaster
           position="top-right"
           toastOptions={{
             duration: 4000,
             style: {
-              background: '#363636',
-              color: '#fff',
+              background: "#fff",
+              color: "#333",
             },
             success: {
-              duration: 3000,
-              iconTheme: {
-                primary: '#4ade80',
-                secondary: '#fff',
+              style: {
+                border: "1px solid #10b981",
               },
             },
             error: {
-              duration: 5000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+              style: {
+                border: "1px solid #ef4444",
               },
             },
           }}

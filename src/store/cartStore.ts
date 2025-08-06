@@ -1,81 +1,209 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-// Update the import path below to the correct relative path if needed
-import { Product } from '@/types';
+import api from '@/services/api';
+import toast from 'react-hot-toast';
 
 interface CartItem {
-  product: Product;
+  id: number;
   quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  product: {
+    id: number;
+    name: string;
+    price: number;
+    publicPrice: number;
+    affiliatePrice: number;
+    imageUrl: string;
+    stock: number;
+    category: {
+      id: number;
+      name: string;
+    };
+    isAvailable: boolean;
+  };
 }
 
-interface CartStore {
+interface Cart {
+  id: number;
   items: CartItem[];
-  addItem: (product: Product, quantity?: number) => void;
-  removeItem: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
-  clearCart: () => void;
-  getTotalItems: () => number;
-  getTotalPrice: (isAffiliate?: boolean) => number;
+  totalItems: number;
+  totalPrice: number;
+  isEmpty: boolean;
+  updatedAt: string;
 }
 
-export const useCartStore = create<CartStore>()(
+interface CartState {
+  cart: Cart | null;
+  isLoading: boolean;
+  error: string | null;
+  
+  // Actions
+  fetchCart: () => Promise<void>;
+  addToCart: (productId: number, quantity: number) => Promise<void>;
+  updateCartItem: (itemId: number, quantity: number) => Promise<void>;
+  removeCartItem: (itemId: number) => Promise<void>;
+  clearCart: () => Promise<void>;
+  getCartSummary: () => Promise<any>;
+  checkCartAvailability: () => Promise<void>;
+  clearError: () => void;
+}
+
+export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
-      items: [],
-      
-      addItem: (product, quantity = 1) => {
-        const items = get().items;
-        const existingItem = items.find(item => item.product.id === product.id);
-        
-        if (existingItem) {
-          set({
-            items: items.map(item =>
-              item.product.id === product.id
-                ? { ...item, quantity: item.quantity + quantity }
-                : item
-            ),
+      cart: null,
+      isLoading: false,
+      error: null,
+
+      fetchCart: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await api.get('/cart');
+          if (response.data.success) {
+            set({ 
+              cart: response.data.data,
+              isLoading: false,
+              error: null
+            });
+          }
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al obtener el carrito';
+          set({ 
+            error: message, 
+            isLoading: false 
           });
-        } else {
-          set({ items: [...items, { product, quantity }] });
+          console.error('Error fetching cart:', error);
         }
       },
-      
-      removeItem: (productId) => {
-        set({
-          items: get().items.filter(item => item.product.id !== productId),
-        });
-      },
-      
-      updateQuantity: (productId, quantity) => {
-        if (quantity <= 0) {
-          get().removeItem(productId);
-          return;
+
+      addToCart: async (productId: number, quantity: number) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await api.post('/cart/items', {
+            productId,
+            quantity
+          });
+          
+          if (response.data.success) {
+            // Refetch cart to get updated data
+            await get().fetchCart();
+            toast.success('Producto agregado al carrito');
+          }
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al agregar al carrito';
+          set({ 
+            error: message, 
+            isLoading: false 
+          });
+          toast.error(message);
+          throw error;
         }
-        
-        set({
-          items: get().items.map(item =>
-            item.product.id === productId
-              ? { ...item, quantity }
-              : item
-          ),
-        });
       },
-      
-      clearCart: () => set({ items: [] }),
-      
-      getTotalItems: () => {
-        return get().items.reduce((total, item) => total + item.quantity, 0);
+
+      updateCartItem: async (itemId: number, quantity: number) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await api.put(`/cart/items/${itemId}`, {
+            quantity
+          });
+          
+          if (response.data.success) {
+            await get().fetchCart();
+            toast.success('Cantidad actualizada');
+          }
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al actualizar cantidad';
+          set({ 
+            error: message, 
+            isLoading: false 
+          });
+          toast.error(message);
+        }
       },
-      
-      getTotalPrice: (isAffiliate = false) => {
-        return get().items.reduce((total, item) => {
-          const price = isAffiliate ? item.product.affiliatePrice : item.product.price;
-          return total + (price * item.quantity);
-        }, 0);
+
+      removeCartItem: async (itemId: number) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await api.delete(`/cart/items/${itemId}`);
+          
+          if (response.data.success) {
+            await get().fetchCart();
+            toast.success('Producto eliminado del carrito');
+          }
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al eliminar producto';
+          set({ 
+            error: message, 
+            isLoading: false 
+          });
+          toast.error(message);
+        }
       },
+
+      clearCart: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await api.delete('/cart');
+          
+          if (response.data.success) {
+            set({ 
+              cart: null,
+              isLoading: false,
+              error: null
+            });
+            toast.success('Carrito vaciado');
+          }
+        } catch (error: any) {
+          const message = error.response?.data?.message || 'Error al vaciar carrito';
+          set({ 
+            error: message, 
+            isLoading: false 
+          });
+          toast.error(message);
+        }
+      },
+
+      getCartSummary: async () => {
+        try {
+          const response = await api.get('/cart/summary');
+          if (response.data.success) {
+            return response.data.data;
+          }
+          return null;
+        } catch (error: any) {
+          console.error('Error getting cart summary:', error);
+          return null;
+        }
+      },
+
+      checkCartAvailability: async () => {
+        const { cart } = get();
+        if (!cart || cart.isEmpty) return;
+
+        try {
+          const productIds = cart.items.map(item => item.product.id);
+          const response = await api.post('/products/check-availability', {
+            ids: productIds
+          });
+          
+          if (response.data.success) {
+            const unavailableProducts = response.data.data.filter((p: any) => !p.available);
+            if (unavailableProducts.length > 0) {
+              toast.error(`Algunos productos ya no están disponibles`);
+              await get().fetchCart(); // Refresh cart to update availability
+            }
+          }
+        } catch (error: any) {
+          console.error('Error checking availability:', error);
+        }
+      },
+
+      clearError: () => set({ error: null }),
     }),
     {
       name: 'cart-storage',
+      partialize: (state) => ({ cart: state.cart }),
     }
   )
 );

@@ -26,7 +26,7 @@ import {
 
 const ProfilePage: React.FC = () => {
   const router = useRouter();
-  const { user, isAuthenticated, updateProfile, logout, getRoleLabel } = useAuthStore();
+  const { user, isAuthenticated, updateProfile, getRoleLabel } = useAuthStore();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -143,12 +143,14 @@ const ProfilePage: React.FC = () => {
     if (!validateForm()) return;
     
     setIsLoading(true);
-    const success = await updateProfile(formData);
-    
-    if (success) {
+    try {
+      await updateProfile(formData);
       setIsEditing(false);
+    } catch (error) {
+      // Error handled in store
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleChangePassword = async () => {
